@@ -4,6 +4,10 @@
 lunar-box-*.json
 google-sheets-credentials.json
 
+# Deployment logs
+*.log
+logs/
+
 # Python
 __pycache__/
 *.py[cod]

@@ -3,6 +3,7 @@ import schedule
 import time
 import threading
 from datetime import datetime
+import os
 
 from config import CONFIG, EMAIL_CONFIG, PERSONAL_INFO
 from job_sources import JobAggregator
@@ -10,6 +11,7 @@ from company_finder import CompanyOutreachManager
 from email_manager import EmailSender
 from data_manager import LeadManager
 from discord_monitor import DiscordJobMonitor
+from health_check import start_health_server
 
 class JobHuntingBot:
     def __init__(self):
@@ -201,5 +203,20 @@ class JobHuntingBot:
         print("✓ Cleanup complete")
 
 if __name__ == "__main__":
+    print("🤖 Starting JobPulse - Automated Job Hunting Bot")
+    print("=" * 50)
+    
+    # Start health check server for deployment monitoring
+    health_port = int(os.environ.get('PORT', 8080))
+    start_health_server(health_port)
+    
     bot = JobHuntingBot()
-    bot.run()
+    
+    try:
+        bot.run()
+    except KeyboardInterrupt:
+        print("\n👋 JobPulse stopped by user")
+    except Exception as e:
+        print(f"\n❌ JobPulse crashed: {e}")
+        import traceback
+        traceback.print_exc()
