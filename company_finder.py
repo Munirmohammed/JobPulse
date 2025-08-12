@@ -280,21 +280,63 @@ class EnhancedEmailExtractor:
 
     
     def _is_relevant_email(self, email):
-        """STRICT filtering - only high-quality business emails for outreach"""
+        """ULTRA-STRICT filtering - only real business emails, no image files or junk"""
         email_lower = email.lower().strip()
         
-        # Skip garbage/irrelevant emails
+        # FIRST: Basic email format validation
+        if '@' not in email or email.count('@') != 1:
+            return False
+        
+        try:
+            local_part, domain_part = email.split('@')
+        except ValueError:
+            return False
+        
+        # REJECT: Image files, media files, and other non-email patterns
+        image_extensions = [
+            '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.ico', '.bmp',
+            '.webm', '.mp4', '.mov', '.avi', '.pdf', '.doc', '.zip', '.tar',
+            '.css', '.js', '.html', '.xml', '.json', '.txt'
+        ]
+        
+        if any(ext in email_lower for ext in image_extensions):
+            return False
+        
+        # REJECT: Contains non-email patterns
+        invalid_patterns = [
+            '2x.', '@2x', 'logo-', 'img-', 'icon-', 'hero-', 'cover-',
+            'still-', 'video-', 'updated_', 'monochrome', 'RGB'
+        ]
+        
+        if any(pattern in email_lower for pattern in invalid_patterns):
+            return False
+        
+        # REJECT: Domain part validation
+        if not domain_part or '.' not in domain_part:
+            return False
+        
+        # Domain must end with a real TLD (not image extension)
+        domain_parts = domain_part.split('.')
+        if len(domain_parts) < 2:
+            return False
+        
+        tld = domain_parts[-1]
+        valid_tlds = ['com', 'org', 'net', 'edu', 'gov', 'io', 'co', 'app', 'dev', 'ai', 'ly', 'me']
+        if tld not in valid_tlds:
+            return False
+        
+        # REJECT: garbage/irrelevant emails
         skip_patterns = [
             'noreply', 'no-reply', 'donotreply', 'example.com', 'test.com',
             'webmaster@', 'admin@', 'postmaster@', 'abuse@', 'spam@',
             'robot@', 'bot@', 'automatic@', 'newsletter@', 'marketing@',
-            'notifications@', 'alerts@', 'system@', 'daemon@'
+            'notifications@', 'alerts@', 'system@', 'daemon@', 'u003e'
         ]
         
         if any(skip in email_lower for skip in skip_patterns):
             return False
         
-        # Only accept HIGH-QUALITY business emails
+        # ONLY ACCEPT: HIGH-QUALITY business emails
         business_patterns = [
             'contact', 'info', 'hello', 'careers', 'jobs', 'hr', 'hiring',
             'sales', 'business', 'partnerships', 'support', 'team',
@@ -304,18 +346,12 @@ class EnhancedEmailExtractor:
         # Must contain at least one business pattern
         is_business_email = any(pattern in email_lower for pattern in business_patterns)
         
-        # Additional validation - must be properly formatted
-        if '@' not in email or '.' not in email.split('@')[1]:
-            return False
-            
-        # Domain must not be a free email service for business contacts
-        domain = email.split('@')[1].lower()
+        # Domain validation for free email services
+        domain = domain_part.lower()
         free_domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com']
         
-        # For business emails, prefer company domains over free email services
-        # But allow free emails if they contain strong business keywords
+        # For free email domains, require stronger business indicators
         if domain in free_domains:
-            # Only allow free emails if they have strong business indicators
             strong_business = any(pattern in email_lower for pattern in 
                                 ['careers', 'hiring', 'jobs', 'business', 'sales', 'partnerships'])
             return strong_business
